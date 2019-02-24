@@ -5,7 +5,7 @@ This script attempts to gather all the same variables that the MDT gather step w
 
 Execute
 =========
-cscript.exe //nologo gather.vbs
+```cscript.exe //nologo gather.vbs
 
 Output Variables
 =========
