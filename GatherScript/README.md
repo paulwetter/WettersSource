@@ -5,7 +5,7 @@ This script attempts to gather all the same variables that the MDT gather step w
 
 Execute
 =========
-```cscript.exe //nologo gather.vbs
+```cscript.exe //nologo gather.vbs```
 
 Output Variables
 =========
@@ -37,4 +37,4 @@ IsBDE = True
 BitlockerEncryptionMethod = XTS_AES_128
 IsUEFI = True
 SecureBootEnabled = True
-IsAHCI = False
+IsAHCI = False```
