@@ -1,7 +1,7 @@
 Gather.vbs
 =========
 
-This script attempts to gather all the same variables that the MDT gather step would collect.
+This VBScript attempts to gather all the same variables that the MDT gather step would collect.  VBScript has the advantage over PowerShell because you don't have to add PowerShell to the boot image.
 
 Execute
 =========
