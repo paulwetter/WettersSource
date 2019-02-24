@@ -6,11 +6,13 @@ This script attempts to gather all the same variables that the MDT gather step w
 Execute
 =========
 Must execute from elevated command prompt.  Should be run with cscript to output to command line.
+
 ```cscript.exe //nologo gather.vbs```
 
 Output Variables
 =========
 Sample of the variables and values that it would output.
+
 ```Architecture = X64
 IsOnBattery = True
 Model = Surface Book 2
