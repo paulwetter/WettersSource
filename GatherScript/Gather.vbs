@@ -1,3 +1,7 @@
+'Version: 1.00
+'Author: Paul Wetter
+'Modified Date: 2/23/19
+'This script is provided AS-IS with no guarantees, no warranties, and they confer no rights.
 
 'These are the arrays of all of the know chassis types:
 arrDesktopChassisTypes = array("3","4","5","6","7","15","16","35","36")
