@@ -1,6 +1,6 @@
-'Version: 1.00
+'Version: 1.10
 'Author: Paul Wetter
-'Modified Date: 2/23/19
+'Modified Date: 3/13/19
 'This script is provided AS-IS with no guarantees, no warranties, and they confer no rights.
 
 'These are the arrays of all of the know chassis types:
@@ -343,3 +343,22 @@ Else
 	IsAHCI = "False"
 End If
 WriteTSVar "IsAHCI", IsAHCI
+
+'See if TPM Is enabled
+TPMExists = "False"
+TMPIsActivated = "False"
+TPMIsEnabled = "False"
+set objWMIService = GetObject("winmgmts:\\.\root\CIMV2\Security\MicrosoftTpm") 
+set colItems = objWMIService.ExecQuery("SELECT * FROM Win32_Tpm",,32)
+for each objItem in colItems
+	TPMExists = "True"
+	If (objItem.IsActivated_InitialValue = "True") Then
+		TMPIsActivated = "True"
+	End If
+	If (objItem.IsEnabled_InitialValue = "True") Then
+		TPMIsEnabled = "True"
+	End If
+Next
+WriteTSVar "TPMExists", TPMExists
+WriteTSVar "TMPIsActivated", TMPIsActivated
+WriteTSVar "TPMIsEnabled", TPMIsEnabled
