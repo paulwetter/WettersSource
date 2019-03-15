@@ -1,6 +1,6 @@
-'Version: 1.10
+'Version: 1.11
 'Author: Paul Wetter
-'Modified Date: 3/13/19
+'Modified Date: 3/15/19
 'This script is provided AS-IS with no guarantees, no warranties, and they confer no rights.
 
 'These are the arrays of all of the know chassis types:
@@ -20,6 +20,7 @@ Function WriteTSVar(VarName,VarValue)
 	error_description = Err.Description
 	'on error goto 0
 	if (error_returned <> 0) then 
+		Err.Clear
 		wscript.echo "TS not running, would have set [" & VarName & "] to value [" & VarValue & "] (Error: " & error_returned & ")."
 	else
 		Err.Clear
@@ -39,6 +40,7 @@ Function GetTSVar(VarName)
 	error_description = Err.Description
 	'on error goto 0
 	if (error_returned <> 0) then 
+		Err.Clear
 		wscript.echo "TS not running, GetTSVar could not find value for [" & VarName & "]."
 	else
 		Err.Clear
@@ -278,6 +280,7 @@ WriteTSVar "BitlockerEncryptionMethod", strEncMethod
 'Set objBde = objWMIService.Get("Win32_EncryptableVolume")
 
 'UEFI And Secureboot: True or False
+Err.Clear
 strSecureBoot = "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecureBoot\State\UEFISecureBootEnabled"
 strUEFI = "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecureBoot\State\"
 Set objShell = WScript.CreateObject("WScript.Shell")
@@ -294,6 +297,8 @@ Else
 End If
 WriteTSVar "IsUEFI", IsUEFI
 'On Error Resume Next
+Err.Clear
+SecureBootEnabled = "False"
 intSecureBoot = objShell.RegRead(strSecureBoot)
 error_returned = Err.Number
 error_description = Err.Description
