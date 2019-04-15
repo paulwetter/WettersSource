@@ -70,6 +70,32 @@ function Get-ADWithCMComputers {
     }
 }
 
+Function Get-ADCMComparison {
+    param(
+        # Primary site server for this Configuration Manager Site
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $SiteServer,
+        # Site name for this primary site server
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $CMSite = (Get-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\CCM\CcmEval -Name LastSiteCode -ErrorAction SilentlyContinue).LastSiteCode,
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        [securestring]$Credential
+    )
+    $adc = Get-ComputersFromAD
+    if ($Credential) {
+        $cmc = Get-ComputersFromCM -SiteServer $SiteServer -CMSite $CMSite -Credential $Credential
+    }
+    else {
+        $cmc = Get-ComputersFromCM -SiteServer $SiteServer -CMSite $CMSite
+    }
+    Get-ADWithCMComputers -AdComputers $adc -CmComputers $cmc
+}
+
 Function Export-ADCMComparison {
     param(
         # Primary site server for this Configuration Manager Site
