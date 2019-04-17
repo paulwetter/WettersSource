@@ -28,13 +28,13 @@ Function Get-ComputersFromCM {
         [string]$CMSite = (Get-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\CCM\CcmEval -Name LastSiteCode -ErrorAction SilentlyContinue).LastSiteCode,
         [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
-        [securestring]$Credential
+        [System.Management.Automation.PSCredential]$Credential
     )
     if ($Credential) {
-        Get-WmiObject -Class SMS_R_System -Namespace "ROOT\SMS\site_$CMSite" -Property Name, Client -ComputerName $SiteServer -Credential $Credential | Select-Object Name, Client
+        Get-WmiObject -Namespace "ROOT\SMS\site_$CMSite" -Query "select distinct SMS_R_System.Name, SMS_R_System.Client, SMS_G_System_CH_ClientSummary.LastPolicyRequest from  SMS_R_System left join SMS_G_System_CH_ClientSummary on SMS_G_System_CH_ClientSummary.ResourceID = SMS_R_System.ResourceId" -ComputerName $SiteServer -Credential $Credential | select -Property @{Name='Name'; Expression={$_.SMS_R_System.Name}},@{Name='Client'; Expression={$_.SMS_R_System.Client}},@{Name='LastPolicyRequest'; Expression={[Management.ManagementDateTimeConverter]::ToDateTime($_.SMS_G_System_CH_ClientSummary.LastPolicyRequest)}}
     }
     else {
-        Get-WmiObject -Class SMS_R_System -Namespace "ROOT\SMS\site_$CMSite" -Property Name, Client -ComputerName $SiteServer | Select-Object Name, Client
+        Get-WmiObject -Namespace "ROOT\SMS\site_$CMSite" -Query "select distinct SMS_R_System.Name, SMS_R_System.Client, SMS_G_System_CH_ClientSummary.LastPolicyRequest from  SMS_R_System left join SMS_G_System_CH_ClientSummary on SMS_G_System_CH_ClientSummary.ResourceID = SMS_R_System.ResourceId" -ComputerName $SiteServer | select -Property @{Name='Name'; Expression={$_.SMS_R_System.Name}},@{Name='Client'; Expression={$_.SMS_R_System.Client}},@{Name='LastPolicyRequest'; Expression={[Management.ManagementDateTimeConverter]::ToDateTime($_.SMS_G_System_CH_ClientSummary.LastPolicyRequest)}}
     }
 }
 
@@ -50,12 +50,14 @@ function Get-ADWithCMComputers {
     foreach ($Comp in $AdComputers) {
         If ($Comp.ComputerName -in $CmComputers.Name) {
             $InCM = 'True'
-            $CMClient = $CmComputers | Where-Object { $_.Name -like $Comp.ComputerName } | Select-Object -ExpandProperty Client
-            if ($CMClient -eq 1) { $CMClient = 'True' }else { $CMClient = 'False' }
+            $CMComputer = $CmComputers | Where-Object { $_.Name -like $Comp.ComputerName }
+            if ($CMComputer.Client -eq 1) { $CMClient = 'True' }else { $CMClient = 'False' }
+            $CMPolicyRequest = $CMComputer.LastPolicyRequest
         }
         else {
             $InCM = 'False'
             $CMClient = 'False'
+            $CMPolicyRequest = ''
         }
         [pscustomobject][ordered]@{
             'ComputerName'    = "$($Comp.ComputerName)"
@@ -66,6 +68,7 @@ function Get-ADWithCMComputers {
             'OrgUnit'         = "$($Comp.OrgUnit)"
             'InConfigMgr'     = "$InCM"
             'CMClient'        = "$CMClient"
+            'LastPolicyRequest'="$CMPolicyRequest"
         }
     }
 }
@@ -84,7 +87,7 @@ Function Get-ADCMComparison {
         $CMSite = (Get-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\CCM\CcmEval -Name LastSiteCode -ErrorAction SilentlyContinue).LastSiteCode,
         [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
-        [securestring]$Credential
+        [System.Management.Automation.PSCredential]$Credential
     )
     $adc = Get-ComputersFromAD
     if ($Credential) {
@@ -110,7 +113,7 @@ Function Export-ADCMComparison {
         $CMSite = (Get-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\CCM\CcmEval -Name LastSiteCode -ErrorAction SilentlyContinue).LastSiteCode,
         [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
-        [securestring]$Credential,
+        [System.Management.Automation.PSCredential]$Credential,
         # File you want to export your CSV of computers to
         [Parameter(Mandatory = $false)]
         [ValidateScript( {
@@ -122,6 +125,7 @@ Function Export-ADCMComparison {
         [System.IO.FileInfo]
         $CSVPath = ".\CMADComputerComparison$(Get-Date -Format 'yyyyMMdd-hhmmss').csv"
     )
+    Write-Host "Exporting computer list to: $CSVPath"
     $adc = Get-ComputersFromAD
     if ($Credential) {
         $cmc = Get-ComputersFromCM -SiteServer $SiteServer -CMSite $CMSite -Credential $Credential
