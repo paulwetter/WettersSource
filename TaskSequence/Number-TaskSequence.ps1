@@ -1,6 +1,6 @@
 Function Set-PWSequenceStepNumbers {
     [CmdletBinding()]
-    param ($Sequence, $GroupName, $StepCounter = -1)
+    param ($Sequence, $GroupName, $StepCounter = 0)
     Write-Verbose "Starting Run: $StepCounter"
     foreach ($node in $Sequence.ChildNodes) {
         switch ($node.localname) {
@@ -21,28 +21,33 @@ Function Set-PWSequenceStepNumbers {
             }
             'subtasksequence' {
                 if ([string]::IsNullOrEmpty($node.disable)) {
-                    $StepCounter++
-                    Write-Verbose "$StepCounter --- SUBTS --- $($Node.Name)"
-                    $SubTSPackageID = $(foreach ($var in $Node.defaultVarList.variable) { if ($Var.property -like 'TsPackageID') { $var.'#text' } })
-                    $SubSequence = Get-PWTSXml -TSPackageID "$SubTSPackageID"
-                    $SubTaskSequenceXML = Set-PWSequenceStepNumbers -Sequence $SubSequence
-                    $SubTSFinalStepNumber = ($SubTaskSequenceXML.stepnumber | Measure-Object -Maximum).Maximum
-                    if ($GroupName) {
-                        $newname = "$($Node.name)" -replace '[0-9]*\. ', ''
-                        $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
-                        $StepCounter = $StepCounter + $SubTSFinalStepNumber + 2
-                        $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "$GroupName"; 'StepName' = "$($node.Name)" }
+                    if ((Get-IsParentGroupDisabled -TSXml $node) -ne $true) {
+                        $StepCounter++
+                        Write-Verbose "$StepCounter --- SUBTS --- $($Node.Name)"
+                        $SubTSPackageID = $(foreach ($var in $Node.defaultVarList.variable) { if ($Var.property -like 'TsPackageID') { $var.'#text' } })
+                        $SubSequence = Get-PWTSXml -TSPackageID "$SubTSPackageID"
+                        $SubTaskSequenceXML = Set-PWSequenceStepNumbers -Sequence $SubSequence
+                        $SubTSFinalStepNumber = ($SubTaskSequenceXML.stepnumber | Measure-Object -Maximum).Maximum
+                        if ($GroupName) {
+                            $newname = "$($Node.name)" -replace '[0-9]*\. ', ''
+                            $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
+                            $StepCounter = $StepCounter + $SubTSFinalStepNumber
+                            $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "$GroupName"; 'StepName' = "$($node.Name)" }
+                        }
+                        else {
+                            $newname = "$($Node.name)" -replace '[0-9]*\. ', ''
+                            $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
+                            $StepCounter = $StepCounter + $SubTSFinalStepNumber
+                            $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "N/A"; 'StepName' = "$($node.Name)" }
+                        }
+                        $TSStep
                     }
                     else {
-                        $newname = "$($Node.name)" -replace '[0-9]*\. ', ''
-                        $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
-                        $StepCounter = $StepCounter + $SubTSFinalStepNumber + 2
-                        $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "N/A"; 'StepName' = "$($node.Name)" }
+                        $StepCounter--
                     }
-                    $TSStep
-                }else{
-                    $newname = "$($Node.name)" -replace '[0-9]*\. ', ''
-                    $Node.name = Set-MaxLength -Str "$newname" -Length 50
+                }
+                else {
+                    $StepCounter--
                 }
             }
             'group' {
@@ -53,7 +58,7 @@ Function Set-PWSequenceStepNumbers {
                 $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "$($node.Name)"; 'StepName' = "N/A" }
                 #$TSStep
                 $NextSteps = Set-PWSequenceStepNumbers -Sequence $node -GroupName "$($node.Name)" -StepCounter $StepCounter
-                foreach ($NextStep in $NextSteps) { Write-Verbose $NextStep.StepNumber }                
+                foreach ($NextStep in $NextSteps) { Write-Verbose $NextStep.StepNumber }
                 $StepCounter = ($NextSteps.StepNumber | Measure-Object -Maximum).Maximum
                 Write-Verbose "$StepCounter --- GROUP --- $($Node.Name) --- BeforeINC"
                 $StepCounter++
@@ -62,14 +67,14 @@ Function Set-PWSequenceStepNumbers {
                 $TSStep
             }
             'sequence' {
-                #if ($StepCounter -ne 0) { $StepCounter++ }
+                if ($StepCounter -ne 0) { $StepCounter++ }
                 Write-Verbose "$StepCounter --- SEQU --- $($Node.Name)"
                 $NextSteps = Set-PWSequenceStepNumbers -Sequence $node -GroupName "$($node.Name)" -StepCounter $StepCounter
                 $NextSteps
-                # if ($StepCounter -ne 0) {
-                #     $StepCounter = ($NextSteps.StepNumber | Measure-Object -Maximum).Maximum
-                #     $StepCounter++
-                # }
+                if ($StepCounter -ne 0) {
+                    $StepCounter = ($NextSteps.StepNumber | Measure-Object -Maximum).Maximum
+                    $StepCounter++
+                }
                 Write-Verbose "$StepCounter --- SEQU --- $($Node.Name) --- END"
             }
             default { }
@@ -81,7 +86,6 @@ Function Set-PWSequenceStepNumbers {
 function Set-MaxLength {
     param (
         [parameter(Mandatory = $True, ValueFromPipeline = $True)]
-        
         [string] $Str,
         [parameter(Mandatory = $True, Position = 1)]
         [int] $Length
@@ -106,17 +110,13 @@ Function Get-PWTSXml {
     # Get SMS_TaskSequencePackage WMI object
     $TaskSequencePackage = Get-WmiObject -Namespace "root\SMS\site_$($SiteCode)" -Class SMS_TaskSequencePackage -ComputerName $SiteServer -Filter "PackageID like `'$TSPackageID`'"
     $TaskSequencePackage.Get()
- 
     # Get SMS_TaskSequence WMI object from TaskSequencePackage
     $TaskSequence = Invoke-WmiMethod -Namespace "root\SMS\site_$($SiteCode)" -Class SMS_TaskSequencePackage -ComputerName $SiteServer -Name "GetSequence" -ArgumentList $TaskSequencePackage
- 
     # Convert WMI object to XML
     $TaskSequenceResult = Invoke-WmiMethod -Namespace "root\SMS\site_$($SiteCode)" -Class SMS_TaskSequence -ComputerName $SiteServer -Name "SaveToXml" -ArgumentList $TaskSequence.TaskSequence
     $TaskSequenceXML = $TaskSequenceResult.ReturnValue
     [xml]$TaskSequenceXML
-
 }
-
 
 Function Set-PWTSXml {
     [CmdletBinding()]
@@ -141,11 +141,32 @@ Function Set-PWTSXml {
     $XMLString = $TSXml.OuterXml
     Write-Verbose "Invoke-WmiMethod -Namespace `"root\SMS\site_$($SiteCode)`" -Class SMS_TaskSequencePackage -ComputerName $SiteServer -Name `"ImportSequence`" -ArgumentList `"$XMLString`""
     $TaskSequenceResult = Invoke-WmiMethod -Namespace "root\SMS\site_$($SiteCode)" -Class SMS_TaskSequencePackage -ComputerName $SiteServer -Name "ImportSequence" -ArgumentList "$XMLString"
- 
+
     # Update SMS_TaskSequencePackage WMI object
     Write-Verbose "Invoke-WmiMethod -Namespace `"root\SMS\site_$($SiteCode)`" -Class SMS_TaskSequencePackage -ComputerName $SiteServer -Name `"SetSequence`" -ArgumentList @($($TaskSequenceResult.TaskSequence), $TaskSequencePackage)"
     Invoke-WmiMethod -Namespace "root\SMS\site_$($SiteCode)" -Class SMS_TaskSequencePackage -ComputerName $SiteServer -Name "SetSequence" -ArgumentList @($TaskSequenceResult.TaskSequence, $TaskSequencePackage)
 }
+
+Function Get-IsParentGroupDisabled {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        $TSXml
+    )
+    Write-Verbose "Checking the elements parent: $($tsxml.Name)"
+    IF ($null -ne $tsxml.ParentNode) {
+        Write-Verbose "Is disabled: $($tsxml.ParentNode.Disable)"
+        If ($tsxml.ParentNode.Disable -eq "true") {
+            Return $true
+        }
+        else {
+            Write-Verbose "Checking into this parent: $($tsxml.ParentNode.Name)"
+            Get-IsParentGroupDisabled -TSXml $tsxml.ParentNode
+        }
+    }
+}
+
 
 $Sequence = Get-PWTSXml -TSPackageID "MMS00019"
 
