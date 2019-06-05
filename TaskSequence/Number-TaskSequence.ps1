@@ -58,8 +58,10 @@ Function Set-PWSequenceStepNumbers {
                 $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "$($node.Name)"; 'StepName' = "N/A" }
                 #$TSStep
                 $NextSteps = Set-PWSequenceStepNumbers -Sequence $node -GroupName "$($node.Name)" -StepCounter $StepCounter
-                foreach ($NextStep in $NextSteps) { Write-Verbose $NextStep.StepNumber }
-                $StepCounter = ($NextSteps.StepNumber | Measure-Object -Maximum).Maximum
+                If ($NextSteps) {
+                    foreach ($NextStep in $NextSteps) { Write-Verbose $NextStep.StepNumber }
+                    $StepCounter = ($NextSteps.StepNumber | Measure-Object -Maximum).Maximum
+                }
                 Write-Verbose "$StepCounter --- GROUP --- $($Node.Name) --- BeforeINC"
                 $StepCounter++
                 Write-Verbose "$StepCounter --- GROUP --- $($Node.Name) --- END"
