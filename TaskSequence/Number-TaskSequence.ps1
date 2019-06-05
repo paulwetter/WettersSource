@@ -1,6 +1,6 @@
 Function Set-PWSequenceStepNumbers {
     [CmdletBinding()]
-    param ($Sequence, $GroupName, $StepCounter = 0)
+    param ($Sequence, $GroupName, [int]$StepCounter = 0)
     Write-Verbose "Starting Run: $StepCounter"
     foreach ($node in $Sequence.ChildNodes) {
         switch ($node.localname) {
@@ -52,8 +52,9 @@ Function Set-PWSequenceStepNumbers {
             }
             'group' {
                 $StepCounter++
+                if (($StepCounter -eq 1) -and ($FirstStep -ne 0)){$StepCounter = 0;$FirstStep = 0}
                 Write-Verbose "$StepCounter --- GROUP --- $($Node.Name) --- Start"
-                $newname = "$($Node.name)" -replace '[0-9]*\. ', ''
+				$newname = "$($Node.name)" -replace '[0-9]*\. ', ''
                 $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
                 $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "$($node.Name)"; 'StepName' = "N/A" }
                 #$TSStep
