@@ -1,3 +1,13 @@
+[CmdletBinding()]
+param (
+    [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]  
+    [string]$PackageID,
+	[Parameter(Mandatory = $false)]
+	[ValidateNotNullOrEmpty()]
+	[string]$SiteCode = (New-Object -ComObject Microsoft.SMS.Client -Strict).GetAssignedSite()
+)
+
 Function Set-PWSequenceStepNumbers {
     [CmdletBinding()]
     param ($Sequence, $GroupName, [int]$StepCounter = 0)
@@ -6,6 +16,7 @@ Function Set-PWSequenceStepNumbers {
         switch ($node.localname) {
             'step' {
                 $StepCounter++
+                if (($StepCounter -eq 1) -and ($FirstStep -ne 0)){$StepCounter = 0;$FirstStep = 0}
                 Write-Verbose "$StepCounter --- STEP --- $($Node.Name)"
                 if ($GroupName) {
                     $newname = "$($Node.name)" -replace '[0-9]*\. ', ''
@@ -23,6 +34,7 @@ Function Set-PWSequenceStepNumbers {
                 if ([string]::IsNullOrEmpty($node.disable)) {
                     if ((Get-IsParentGroupDisabled -TSXml $node) -ne $true) {
                         $StepCounter++
+                        if (($StepCounter -eq 1) -and ($FirstStep -ne 0)){$StepCounter = 0;$FirstStep = 0}
                         Write-Verbose "$StepCounter --- SUBTS --- $($Node.Name)"
                         $SubTSPackageID = $(foreach ($var in $Node.defaultVarList.variable) { if ($Var.property -like 'TsPackageID') { $var.'#text' } })
                         $SubSequence = Get-PWTSXml -TSPackageID "$SubTSPackageID"
@@ -107,7 +119,7 @@ Function Get-PWTSXml {
         [string]$SiteServer = 'localhost',
         [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
-        [string]$SiteCode = (Get-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\CCM\CcmEval -Name LastSiteCode -ErrorAction SilentlyContinue).LastSiteCode
+        [string]$SiteCode = (New-Object -ComObject Microsoft.SMS.Client -Strict).GetAssignedSite()
     )
 
     # Get SMS_TaskSequencePackage WMI object
@@ -135,7 +147,7 @@ Function Set-PWTSXml {
         [string]$SiteServer = 'localhost',
         [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
-        [string]$SiteCode = (Get-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\CCM\CcmEval -Name LastSiteCode -ErrorAction SilentlyContinue).LastSiteCode
+        [string]$SiteCode = (New-Object -ComObject Microsoft.SMS.Client -Strict).GetAssignedSite()
     )
     # Get SMS_TaskSequencePackage WMI object
     $TaskSequencePackage = Get-WmiObject -Namespace "root\SMS\site_$($SiteCode)" -Class SMS_TaskSequencePackage -ComputerName $SiteServer -Filter "PackageID like `'$TSPackageID`'"
@@ -170,48 +182,6 @@ Function Get-IsParentGroupDisabled {
     }
 }
 
-
-$Sequence = Get-PWTSXml -TSPackageID "MMS00019"
-
+$Sequence = Get-PWTSXml -TSPackageID $PackageID -SiteCode $SiteCode
 $NewTaskSequenceXML = Set-PWSequenceStepNumbers -Sequence $Sequence
-
-Set-PWTSXml -TSPackageID "MMS00019" -TSXml $Sequence
-
-
-
-
-
-$Sequence = Get-PWTSXml -TSPackageID "MMS00016"
-
-$NewTaskSequenceXML = Set-PWSequenceStepNumbers -Sequence $Sequence
-
-Set-PWTSXml -TSPackageID "MMS00016" -TSXml $Sequence
-
-
-
-
-
-<# 
-$SiteServer = "localhost"
-$SiteCode = "MMS"
-$PackageID = "MMS00016"
-
-# Get SMS_TaskSequencePackage WMI object
-$TaskSequencePackage = Get-WmiObject -Namespace "root\SMS\site_$($SiteCode)" -Class SMS_TaskSequencePackage -ComputerName $SiteServer -Filter "PackageID like `'$PackageID`'"
-$TaskSequencePackage.Get()
- 
-# Get SMS_TaskSequence WMI object from TaskSequencePackage
-$TaskSequence = Invoke-WmiMethod -Namespace "root\SMS\site_$($SiteCode)" -Class SMS_TaskSequencePackage -ComputerName $SiteServer -Name "GetSequence" -ArgumentList $TaskSequencePackage
- 
-# Convert WMI object to XML
-$TaskSequenceResult = Invoke-WmiMethod -Namespace "root\SMS\site_$($SiteCode)" -Class SMS_TaskSequence -ComputerName $SiteServer -Name "SaveToXml" -ArgumentList $TaskSequence.TaskSequence
-$TaskSequenceXML = $TaskSequenceResult.ReturnValue
-$Sequence = [xml]$TaskSequenceXML
-$NewTaskSequenceXML = Set-PWSequenceStepNumbers -Sequence $Sequence
-
-# Convert XML back to SMS_TaskSequencePackage WMI object
-$TaskSequenceResult = Invoke-WmiMethod -Namespace "root\SMS\site_$($SiteCode)" -Class SMS_TaskSequencePackage -ComputerName $SiteServer -Name "ImportSequence" -ArgumentList $Sequence.OuterXml
- 
-# Update SMS_TaskSequencePackage WMI object
-Invoke-WmiMethod -Namespace "root\SMS\site_$($SiteCode)" -Class SMS_TaskSequencePackage -ComputerName $SiteServer -Name "SetSequence" -ArgumentList @($TaskSequenceResult.TaskSequence, $TaskSequencePackage)
- #>
+Set-PWTSXml -TSPackageID $PackageID -TSXml $Sequence -SiteCode $SiteCode
