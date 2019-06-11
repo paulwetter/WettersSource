@@ -56,10 +56,12 @@ Function Set-PWSequenceStepNumbers {
                     }
                     else {
                         $StepCounter--
+                        $Node.name = "$($Node.name)" -replace '[0-9]*\. ', ''
                     }
                 }
                 else {
                     $StepCounter--
+                    $Node.name = "$($Node.name)" -replace '[0-9]*\. ', ''
                 }
             }
             'group' {
