@@ -5,7 +5,12 @@ param (
     [string]$PackageID,
 	[Parameter(Mandatory = $false)]
 	[ValidateNotNullOrEmpty()]
-	[string]$SiteCode = (New-Object -ComObject Microsoft.SMS.Client -Strict).GetAssignedSite()
+    [string]$SiteCode = (New-Object -ComObject Microsoft.SMS.Client -Strict).GetAssignedSite(),
+	[Parameter(Mandatory = $false)]
+	[ValidateNotNullOrEmpty()]
+    [string]$PrimarySiteServer='localhost',    
+	[Parameter(Mandatory = $false)]
+    [switch]$ClearStepNumbers
 )
 
 Function Set-PWSequenceStepNumbers {
@@ -20,12 +25,20 @@ Function Set-PWSequenceStepNumbers {
                 Write-Verbose "$StepCounter --- STEP --- $($Node.Name)"
                 if ($GroupName) {
                     $newname = "$($Node.name)" -replace '[0-9]*\. ', ''
-                    $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
+                    If ($ClearStepNumbers) {
+                        $Node.name = $newname
+                    } else {
+                        $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
+                    }
                     $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "$GroupName"; 'StepName' = "$($node.Name)" }
                 }
                 else {
                     $newname = "$($Node.name)" -replace '[0-9]*\. ', ''
-                    $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
+                    If ($ClearStepNumbers) {
+                        $Node.name = $newname
+                    } else {
+                        $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
+                    }
                     $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "N/A"; 'StepName' = "$($node.Name)" }
                 }
                 $TSStep
@@ -42,14 +55,22 @@ Function Set-PWSequenceStepNumbers {
                         $SubTSFinalStepNumber = ($SubTaskSequenceXML.stepnumber | Measure-Object -Maximum).Maximum
                         if ($GroupName) {
                             $newname = "$($Node.name)" -replace '[0-9]*\. ', ''
-                            $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
-                            $StepCounter = $StepCounter + $SubTSFinalStepNumber
+                            If ($ClearStepNumbers) {
+                                $Node.name = $newname
+                            } else {
+                                $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
+                            }
+                            $StepCounter = $StepCounter + $SubTSFinalStepNumber + 1
                             $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "$GroupName"; 'StepName' = "$($node.Name)" }
                         }
                         else {
                             $newname = "$($Node.name)" -replace '[0-9]*\. ', ''
-                            $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
-                            $StepCounter = $StepCounter + $SubTSFinalStepNumber
+                            If ($ClearStepNumbers) {
+                                $Node.name = $newname
+                            } else {
+                                $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
+                            }
+                            $StepCounter = $StepCounter + $SubTSFinalStepNumber + 1
                             $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "N/A"; 'StepName' = "$($node.Name)" }
                         }
                         $TSStep
@@ -69,7 +90,11 @@ Function Set-PWSequenceStepNumbers {
                 if (($StepCounter -eq 1) -and ($FirstStep -ne 0)){$StepCounter = 0;$FirstStep = 0}
                 Write-Verbose "$StepCounter --- GROUP --- $($Node.Name) --- Start"
 				$newname = "$($Node.name)" -replace '[0-9]*\. ', ''
-                $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
+                If ($ClearStepNumbers) {
+                    $Node.name = $newname
+                } else {
+                    $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
+                }
                 $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "$($node.Name)"; 'StepName' = "N/A" }
                 #$TSStep
                 $NextSteps = Set-PWSequenceStepNumbers -Sequence $node -GroupName "$($node.Name)" -StepCounter $StepCounter
