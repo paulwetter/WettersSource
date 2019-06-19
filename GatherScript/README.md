@@ -3,6 +3,8 @@ Gather.vbs
 
 This VBScript attempts to gather all the same variables that the MDT gather step would collect.  VBScript has the advantage over PowerShell because you don't have to add PowerShell to the boot image.
 
+See Blog Post here: https://wetterssource.com/gather-script-replace-mdt
+
 Execute
 =========
 Must execute from elevated command prompt.  Should be run with cscript to output to command line.
