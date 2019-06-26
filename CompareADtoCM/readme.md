@@ -7,3 +7,7 @@ Load the fuctions into memory:
 Then execute with something similar to this:
 
 `Export-ADCMComparison -SiteServer CM01.domain.com -CMSite SS1 -CSVPath C:\Shared\Computers.csv`
+
+Or, Add a Date to the file name you export:
+
+`Export-ADCMComparison -SiteServer CM01.domain.com -CMSite SS1 -CSVPath C:\Shared\Computers_$(get-date -Format yyyyMMdd).csv`
