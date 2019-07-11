@@ -134,7 +134,7 @@ Process {
             }
 
             # Copy XML to Software Update Groups node
-            Write-Verbose -Message "Copying '$($XMLFile)' to Software Update Groups node action folder"
+            Write-Verbose -Message "Copying '$($XMLFile)' to Task Sequence node action folder"
             $XMLStorageSUGArgs = @{
                 Path = Join-Path -Path $ScriptRoot -ChildPath $XMLFile
                 Destination = Join-Path -Path $AdminConsoleRoot -ChildPath "XmlStorage\Extensions\Actions\$($Node)\$($XMLFile)"
@@ -153,7 +153,7 @@ Process {
         }
         "Uninstall" {
             # Remove XML file from Software Update Groups node
-            Write-Verbose -Message "Removing '$($XMLFile)' from Software Update Groups node action folder"
+            Write-Verbose -Message "Removing '$($XMLFile)' from Task Sequence node action folder"
             $XMLStorageSUGArgs = @{
                 Path = Join-Path -Path $AdminConsoleRoot -ChildPath "XmlStorage\Extensions\Actions\$($Node)\$($XMLFile)"
                 Force = $true
