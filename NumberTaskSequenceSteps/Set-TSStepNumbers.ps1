@@ -54,21 +54,21 @@ Function Set-PWSequenceStepNumbers {
                         $SubTaskSequenceXML = Set-PWSequenceStepNumbers -Sequence $SubSequence
                         $SubTSFinalStepNumber = ($SubTaskSequenceXML.stepnumber | Measure-Object -Maximum).Maximum
                         if ($GroupName) {
-                            $newname = "$($Node.name)" -replace '[0-9]*\. ', ''
+                            $newname = "$($Node.name)" -replace '[0-9]*\-[0-9]*\. ', ''
                             If ($ClearStepNumbers) {
                                 $Node.name = $newname
                             } else {
-                                $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
+                                $Node.name = Set-MaxLength -Str "$($StepCounter)-$($StepCounter + $SubTSFinalStepNumber + 1). $newname" -Length 50
                             }
                             $StepCounter = $StepCounter + $SubTSFinalStepNumber + 1
                             $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "$GroupName"; 'StepName' = "$($node.Name)" }
                         }
                         else {
-                            $newname = "$($Node.name)" -replace '[0-9]*\. ', ''
+                            $newname = "$($Node.name)" -replace '[0-9]*\-[0-9]*\. ', ''
                             If ($ClearStepNumbers) {
                                 $Node.name = $newname
                             } else {
-                                $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
+                                $Node.name = Set-MaxLength -Str "$($StepCounter)-$($StepCounter + $SubTSFinalStepNumber + 1). $newname" -Length 50
                             }
                             $StepCounter = $StepCounter + $SubTSFinalStepNumber + 1
                             $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "N/A"; 'StepName' = "$($node.Name)" }
@@ -77,24 +77,20 @@ Function Set-PWSequenceStepNumbers {
                     }
                     else {
                         $StepCounter--
-                        $Node.name = "$($Node.name)" -replace '[0-9]*\. ', ''
+                        $Node.name = "$($Node.name)" -replace '[0-9]*\-[0-9]*\. ', ''
                     }
                 }
                 else {
                     $StepCounter--
-                    $Node.name = "$($Node.name)" -replace '[0-9]*\. ', ''
+                    $Node.name = "$($Node.name)" -replace '[0-9]*\-[0-9]*\. ', ''
                 }
             }
             'group' {
                 $StepCounter++
                 if (($StepCounter -eq 1) -and ($FirstStep -ne 0)){$StepCounter = 0;$FirstStep = 0}
                 Write-Verbose "$StepCounter --- GROUP --- $($Node.Name) --- Start"
-				$newname = "$($Node.name)" -replace '[0-9]*\. ', ''
-                If ($ClearStepNumbers) {
-                    $Node.name = $newname
-                } else {
-                    $Node.name = Set-MaxLength -Str "$($StepCounter). $newname" -Length 50
-                }
+				$newname = "$($Node.name)" -replace '[0-9]*\-[0-9]*\. ', ''
+				$GroupFirstStep = $StepCounter
                 $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "$($node.Name)"; 'StepName' = "N/A" }
                 #$TSStep
                 $NextSteps = Set-PWSequenceStepNumbers -Sequence $node -GroupName "$($node.Name)" -StepCounter $StepCounter
@@ -104,6 +100,11 @@ Function Set-PWSequenceStepNumbers {
                 }
                 Write-Verbose "$StepCounter --- GROUP --- $($Node.Name) --- BeforeINC"
                 $StepCounter++
+                If ($ClearStepNumbers) {
+                    $Node.name = $newname
+                } else {
+                    $Node.name = Set-MaxLength -Str "$($GroupFirstStep)-$($StepCounter). $newname" -Length 50
+                }
                 Write-Verbose "$StepCounter --- GROUP --- $($Node.Name) --- END"
                 $TSStep = New-Object -TypeName psobject -Property @{'StepNumber' = $StepCounter; 'GroupName' = "$($node.Name)"; 'StepName' = "N/A" }
                 $TSStep
