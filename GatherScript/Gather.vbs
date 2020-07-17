@@ -1,6 +1,6 @@
-'Version: 1.11
+'Version: 1.12
 'Author: Paul Wetter
-'Modified Date: 3/15/19
+'Modified Date: 10/22/19
 'This script is provided AS-IS with no guarantees, no warranties, and they confer no rights.
 
 'These are the arrays of all of the know chassis types:
@@ -89,10 +89,10 @@ for each objItem in colItems
     Else
         tempModel = objItem.Name
     End If
-	WriteTSVar "Model", tempModel
-	WriteTSVar "UUID", ObjItem.UUID
-	WriteTSVar "Vendor", ObjItem.Vendor
-	WriteTSVar "Make", ObjItem.Vendor
+	WriteTSVar "Model", Trim(tempModel)
+	WriteTSVar "UUID", Trim(ObjItem.UUID)
+	WriteTSVar "Vendor", Trim(ObjItem.Vendor)
+	WriteTSVar "Make", Trim(ObjItem.Vendor)
 	
 'Checks if this computer is a Virtual Machine: True or False
 'Then also detects the virtual platform: Hyper-V, VMware, VirtualBox, or Xen
@@ -133,7 +133,7 @@ Next
 set objWMIService = GetObject("winmgmts:\\.\root\cimv2") 
 set colItems = objWMIService.ExecQuery("SELECT * FROM Win32_BaseBoard",,32)
 for each objItem in colItems
-	WriteTSVar "Product", objItem.Product
+	WriteTSVar "Product", Trim(objItem.Product)
 Next
 
 'Gets the serial number and other bios info
@@ -141,16 +141,16 @@ set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
 set colItems = objWMIService.ExecQuery("SELECT * FROM Win32_BIOS",,32)
 for each objItem in colItems
 	WriteTSVar "SerialNumber", Trim(objItem.SerialNumber)
-	WriteTSVar "BIOSVersion", objItem.SMBIOSBIOSVersion
-	WriteTSVar "BIOSReleaseDate", objItem.ReleaseDate
+	WriteTSVar "BIOSVersion", Trim(objItem.SMBIOSBIOSVersion)
+	WriteTSVar "BIOSReleaseDate", Trim(objItem.ReleaseDate)
 Next
 
 'Gets the OS version and build of the system.  If in PE, this will be the PE version info
 set objWMIService = GetObject("winmgmts:\\.\root\cimv2") 
 set colItems = objWMIService.ExecQuery("SELECT * FROM Win32_OperatingSystem",,32)
 for each objItem in colItems
-	WriteTSVar "OSCurrentVersion", objItem.Version
-	WriteTSVar "OSCurrentBuild", objItem.BuildNumber
+	WriteTSVar "OSCurrentVersion", Trim(objItem.Version)
+	WriteTSVar "OSCurrentBuild", Trim(objItem.BuildNumber)
 Next
 
 'Will detect if it is a Desktop, Laptop, or Server, based on the ChassisTypes
