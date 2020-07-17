@@ -136,15 +136,32 @@ Function Get-ADCMComparison {
         $CMSite = (Get-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\CCM\CcmEval -Name LastSiteCode -ErrorAction SilentlyContinue).LastSiteCode,
         [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
-        [System.Management.Automation.PSCredential]$Credential
+        [System.Management.Automation.PSCredential]$Credential,
+        [Parameter(Mandatory = $false)]
+        $Logfile
     )
-    $adc = Get-ComputersFromAD
-    if ($Credential) {
-        $cmc = Get-ComputersFromCM -SiteServer $SiteServer -CMSite $CMSite -Credential $Credential
+    if ($logfile){Write-Log -Message "Collecting computer information from AD..." -Component 'Get-ADCMComparison' -Type 1 -LogFile $Logfile}
+    Try {
+        $adc = Get-ComputersFromAD
+        if ($logfile){Write-Log -Message "Collected [$($adc.count)] computers from AD" -Component 'Get-ADCMComparison' -Type 1 -LogFile $Logfile}
     }
-    else {
-        $cmc = Get-ComputersFromCM -SiteServer $SiteServer -CMSite $CMSite
+    Catch {
+        if ($logfile){Write-Log -Message "failed to collect computer information from AD" -Component 'Get-ADCMComparison' -Type 3 -LogFile $Logfile}
     }
+    Try {
+        if ($logfile){Write-Log -Message "Collecting computer information from CM..." -Component 'Get-ADCMComparison' -Type 1 -LogFile $Logfile}
+        if ($Credential) {
+            $cmc = Get-ComputersFromCM -SiteServer $SiteServer -CMSite $CMSite -Credential $Credential
+        }
+        else {
+            $cmc = Get-ComputersFromCM -SiteServer $SiteServer -CMSite $CMSite
+        }
+        if ($logfile){Write-Log -Message "Collected [$($cmc.count)] computers from CM" -Component 'Get-ADCMComparison' -Type 1 -LogFile $Logfile}
+    }
+    Catch{
+        if ($logfile){Write-Log -Message "failed to collect computer information from CM" -Component 'Get-ADCMComparison' -Type 3 -LogFile $Logfile}
+    }
+    if ($logfile){Write-Log -Message "Comparing computer lists from AD and CM" -Component 'Get-ADWithCMComputers' -Type 1 -LogFile $Logfile}
     Get-ADWithCMComputers -AdComputers $adc -CmComputers $cmc
 }
 
@@ -232,7 +249,7 @@ If (!($CMSite)){
 Try {
     $Computers = @()
     Write-Log -Message "Collecting computer information" -Component 'Get-ADCMComparison' -Type 1 -LogFile $Logfile
-    $Computers = Get-ADCMComparison -SiteServer MN13SVSCCM01.vsto.vistaoutdoor.com -CMSite $CMSite
+    $Computers = Get-ADCMComparison -SiteServer MN13SVSCCM01.vsto.vistaoutdoor.com -CMSite $CMSite -LogFile $Logfile
     Write-Log -Message "Computer information collected for [$($Computers.count)] computers" -Component 'Get-ADCMComparison' -Type 1 -LogFile $Logfile
 }
 Catch {
