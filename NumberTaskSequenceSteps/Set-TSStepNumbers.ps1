@@ -213,6 +213,6 @@ Function Get-IsParentGroupDisabled {
     }
 }
 
-$Sequence = Get-PWTSXml -TSPackageID $PackageID -SiteCode $SiteCode
+$Sequence = Get-PWTSXml -TSPackageID $PackageID -SiteCode $SiteCode -SiteServer $PrimarySiteServer
 $NewTaskSequenceXML = Set-PWSequenceStepNumbers -Sequence $Sequence
-Set-PWTSXml -TSPackageID $PackageID -TSXml $Sequence -SiteCode $SiteCode
+Set-PWTSXml -TSPackageID $PackageID -TSXml $Sequence -SiteCode $SiteCode -SiteServer $PrimarySiteServer
