@@ -1,0 +1,18 @@
+<!--Created by following https://www.ephingadmin.com/create-your-own-right-click-tools/-->
+<ActionDescription Class="Executable" DisplayName="Simulate" MnemonicDisplayName="Simulate" Description="Run a simulation of the task sequence steps.">
+  <ImagesDescription>
+	<ResourceAssembly>
+	  <Assembly>AdminUI.UIResources.dll</Assembly>
+	  <Type>Microsoft.ConfigurationManagement.AdminConsole.UIResources.Properties.Resources.resources</Type>
+	</ResourceAssembly>
+	<ImageResourceName>Advertisement</ImageResourceName>
+  </ImagesDescription>
+  <ShowOn>
+	<string>ContextMenu</string>
+	<string>DefaultHomeTab</string>
+  </ShowOn>
+  <Executable>
+	<FilePath>"powershell.exe"</FilePath>
+	<Parameters>-WindowStyle Minimized -NoLogo -NoProfile -ExecutionPolicy Bypass -file #PATH# -PackageID ##SUB:PackageID## -PrimarySiteServer #SERVER#</Parameters>
+  </Executable>
+</ActionDescription>

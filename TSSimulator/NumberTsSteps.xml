@@ -1,0 +1,50 @@
+<!--Created by following https://www.ephingadmin.com/create-your-own-right-click-tools/-->
+<ActionDescription Class="Group" DisplayName="Task Sequence Steps" MnemonicDisplayName="Task Sequence Steps" Description="Options for writing and remove step numbers on a Task Sequence.">
+    <ImagesDescription>
+        <ResourceAssembly>
+        <Assembly>AdminUI.UIResources.dll</Assembly>
+        <Type>Microsoft.ConfigurationManagement.AdminConsole.UIResources.Properties.Resources.resources</Type>
+        </ResourceAssembly>
+        <ImageResourceName>MigrationJobs</ImageResourceName>
+    </ImagesDescription>
+	<ShowOn>
+		<string>ContextMenu</string>
+		<string>DefaultHomeTab</string>
+	</ShowOn>
+	<ActionGroups>
+		<ActionDescription Class="Executable" DisplayName="Write/Update Step Numbers" MnemonicDisplayName="Write/Update Step Numbers" Description="This will write/re-write the name for each task sequence step with a number for the step in the beginning of the name.">
+            <ImagesDescription>
+                <ResourceAssembly>
+                <Assembly>AdminUI.UIResources.dll</Assembly>
+                <Type>Microsoft.ConfigurationManagement.AdminConsole.UIResources.Properties.Resources.resources</Type>
+                </ResourceAssembly>
+                <ImageResourceName>VendorSpecific</ImageResourceName>
+            </ImagesDescription>
+			<ShowOn>
+				<string>ContextMenu</string>
+				<string>DefaultHomeTab</string>
+			</ShowOn>
+			<Executable>
+				<FilePath>"powershell.exe"</FilePath>
+				<Parameters>-WindowStyle Minimized -NoLogo -NoProfile -ExecutionPolicy Bypass -file #PATH# -PackageID ##SUB:PackageID## -PrimarySiteServer #SERVER#</Parameters>
+			</Executable> 
+		</ActionDescription>
+		<ActionDescription Class="Executable" DisplayName="Remove Step Numbers" MnemonicDisplayName="Remove Step Numbers" Description="This will remove existing step numbers from your sequence.">
+            <ImagesDescription>
+                <ResourceAssembly>
+                <Assembly>AdminUI.UIResources.dll</Assembly>
+                <Type>Microsoft.ConfigurationManagement.AdminConsole.UIResources.Properties.Resources.resources</Type>
+                </ResourceAssembly>
+                <ImageResourceName>Delete</ImageResourceName>
+            </ImagesDescription>
+			<ShowOn>
+				<string>ContextMenu</string>
+				<string>DefaultHomeTab</string>
+			</ShowOn>
+			<Executable>
+				<FilePath>"powershell.exe"</FilePath>
+				<Parameters>-WindowStyle Minimized -NoLogo -NoProfile -ExecutionPolicy Bypass -file #PATH# -PackageID ##SUB:PackageID## -PrimarySiteServer #SERVER# -ClearStepNumbers</Parameters>
+			</Executable> 
+		</ActionDescription>
+	</ActionGroups>
+</ActionDescription>
