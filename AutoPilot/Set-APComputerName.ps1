@@ -2,6 +2,7 @@
 #Useful during the autopilot process.
 [CmdletBinding()]
 param (
+    #This is the Prefix you want to append to your computer names.
     [String]$Prefix = 'BOB'
 )
 #Checks if domain is available
