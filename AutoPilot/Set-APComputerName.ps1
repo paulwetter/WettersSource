@@ -109,7 +109,7 @@ function Test-ComputerExists{
 
 $SN = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
 # Remove any special characters (\/:*?"<>|) that could cause issues in a computer name (plus - because of HyperV). https://docs.microsoft.com/en-us/troubleshoot/windows-server/identity/naming-conventions-for-computer-domain-site-ou
-$SN = $SN -replace '[\\/\:\*\?\"\<\>\|\-]', ''
+$SN = $SN -replace '[\\/\:\*\?\"\<\>\|\- ]', ''
 # if we found a serial number, let try to rename the computer.
 If ([string]::IsNullOrEmpty($Prefix)){
     $NewCompName = $SN
