@@ -2,7 +2,7 @@
 #Useful during the autopilot process.
 [CmdletBinding()]
 param (
-    #This is the Prefix you want to append to your computer names.
+    #This is the Prefix you want to append to your computer names.  Should not exceed 5 characters.
     [String]$Prefix = 'BOB'
 )
 
@@ -66,7 +66,10 @@ function Write-Log {
     $LogMessage | Out-File -Append -Encoding UTF8 -FilePath $LogFile
 }
 
-
+If ($Prefix.Length -gt 5){
+    Write-Log -Message "Prefix set to [$Prefix]. This cannot exceed 5 characters." -Type 3
+    exit 99
+}
 
 #Checks if domain is available
 Try{
@@ -96,6 +99,17 @@ function Test-ComputerExists{
     ![string]::IsNullOrEmpty($colResults)
 }
 
+function Set-SNRightTen {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [String]
+        $SN
+    )
+    $SN = $SN -replace '[\\/\:\*\?\"\<\>\|\- ]', ''
+    $SNLast10 = $SN.Length - 10
+    $SN = $SN.Substring($SNLast10)
+}
 
 #Getting Chassis type for appending to name (if used).
 #$CTs=(Get-CimInstance -ClassName Win32_SystemEnclosure).ChassisTypes
@@ -108,8 +122,17 @@ function Test-ComputerExists{
 #}
 
 $SN = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
+$MFG = (Get-CimInstance -ClassName Win32_BIOS).Manufacturer
 # Remove any special characters (\/:*?"<>|) that could cause issues in a computer name (plus - because of HyperV). https://docs.microsoft.com/en-us/troubleshoot/windows-server/identity/naming-conventions-for-computer-domain-site-ou
 $SN = $SN -replace '[\\/\:\*\?\"\<\>\|\- ]', ''
+
+#lets check and see if this thing is a VMWare device, if it is, use last 10 chars of SN
+If ($MFG -like 'VMware*'){
+    Write-Log "Looks like this is a VMware VM.  Lets use the last ten chars of the serial number [$SN]."
+    $SN = Set-SNRightTen -SN $SN
+    Write-Log "Serial number to be used for computer name [$SN]."
+}
+
 # if we found a serial number, let try to rename the computer.
 If ([string]::IsNullOrEmpty($Prefix)){
     $NewCompName = $SN
