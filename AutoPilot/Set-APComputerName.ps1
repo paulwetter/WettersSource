@@ -108,7 +108,7 @@ function Set-SNRightTen {
     )
     $SN = $SN -replace '[\\/\:\*\?\"\<\>\|\- ]', ''
     $SNLast10 = $SN.Length - 10
-    $SN = $SN.Substring($SNLast10)
+    $SN.Substring($SNLast10)
 }
 
 #Getting Chassis type for appending to name (if used).
