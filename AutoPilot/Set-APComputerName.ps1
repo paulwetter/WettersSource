@@ -142,7 +142,7 @@ while ($NewComputerExists){
         $NewCompName = $NewCompName.Substring(0,13)
     }
     $IncName = "$NewCompName-$Inc"
-    $NewComputerExists = = Test-ComputerExists -ComputerName $IncName
+    $NewComputerExists = Test-ComputerExists -ComputerName $IncName
     Write-Log -Message "Computer [$IncName] Exists in AD: [$NewComputerExists]"
     if (!$NewComputerExists){
         Write-Log -Message "Arrived at available incremented Computer [$IncName]. Resetting variable."
