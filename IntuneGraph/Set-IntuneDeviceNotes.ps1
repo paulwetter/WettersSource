@@ -4,7 +4,7 @@ Function Set-IntuneDeviceNotes{
     Sets the notes on a device in intune.
     
     .DESCRIPTION
-    Sets the notes property on a device in intune using the beta api
+    Sets the notes property on a device in intune using the beta Graph api
     
     .PARAMETER DeviceName
     The name of the device as it appears in intune.
@@ -31,10 +31,8 @@ Function Set-IntuneDeviceNotes{
         $DeviceID = (Get-IntuneManagedDevice -filter "deviceName eq '$DeviceName'" -ErrorAction Stop).id
     }
     Catch{
-        Write-Host 'Failed to query device' -f Red
-        Write-Host $_.Exception.Message -f Red
-        Write-Host $_.Exception.ItemName -f Red
-        break        
+        Write-Error $_.Exception.Message
+        break
     }
     If (![string]::IsNullOrEmpty($DeviceID)){
         $Resource = "deviceManagement/managedDevices('$DeviceID')"
@@ -51,10 +49,8 @@ notes:"$Notes"
             Invoke-MSGraphRequest -HttpMethod PATCH -Url $uri -Content $JSONPayload -Verbose -ErrorAction Stop
         }
         Catch{
-            Write-Host 'Failed to update device' -f Red
-            Write-Host $_.Exception.Message -f Red
-            Write-Host $_.Exception.ItemName -f Red
-            break        
+            Write-Error $_.Exception.Message
+            break
         }
     }
 }
