@@ -12,7 +12,6 @@ $xaml = @'
             <Grid.RowDefinitions>
                 <RowDefinition Height="40" />
                 <RowDefinition Height="400" />
-                <RowDefinition Height="300" />
                 <RowDefinition Height="28" />
             </Grid.RowDefinitions>
             <TextBlock Margin="5" Grid.ColumnSpan="2">Select Processes to terminate:</TextBlock>
@@ -23,13 +22,6 @@ $xaml = @'
                         <GridViewColumn Width="400" Header="Window Title" DisplayMemberBinding="{Binding MainWindowTitle}"/>
                         <GridViewColumn Width="150" Header="Description" DisplayMemberBinding="{Binding Description}"/>
                         <GridViewColumn Width="100" Header="Producer" DisplayMemberBinding="{Binding Company}"/>
-                    </GridView>
-                </ListView.View>
-            </ListView>
-            <ListView Name="VarDetails" MinWidth="500">
-                <ListView.View>
-                    <GridView>
-                        <GridViewColumn Width="500" Header="Execution Log" DisplayMemberBinding="{Binding LogItem}"/>
                     </GridView>
                 </ListView.View>
             </ListView>
