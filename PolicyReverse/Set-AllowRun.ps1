@@ -1,4 +1,4 @@
-#Version 4
+#Version 5
 function Write-Log {
     [CmdletBinding()] 
     Param (
