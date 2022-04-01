@@ -1,4 +1,4 @@
-#Version 5
+#Version 6
 function Write-Log {
     [CmdletBinding()] 
     Param (
@@ -91,7 +91,7 @@ Foreach ($Profile in $RealUserProfiles) {
     Write-Log -Message "Updating run policy for user [$($Profile.PSChildName)]."
     If ($Profile.PSChildName -in ($LoadedHives.PSChildName)) {
         Write-Log "Profile matches that of one of the already loaded registry hive files.  No need to load a hive."
-        If (((Get-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -ErrorAction Ignore).NoRun -ne 0) -or ((Get-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -ErrorAction Ignore).NoPinningToTaskbar -ne 0 )) {
+        If (((Get-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -ErrorAction Ignore).NoRun -ne 0) -or ((Get-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -ErrorAction Ignore).NoPinningToTaskbar -ne 0 ) -or ((Set-ItemProperty -path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -ErrorAction Ignore).NoViewContextMenu -ne 0)) {
             Write-Log -Message "NoRun Value not set as expected [HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer]"
             If (!(Test-Path -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer")){
                 New-Item -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -ErrorAction Ignore
@@ -99,6 +99,7 @@ Foreach ($Profile in $RealUserProfiles) {
             try {
                 Set-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoRun' -Value 0 -ErrorAction Stop
                 Set-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoPinningToTaskbar' -Value 0 -ErrorAction Stop
+                Set-ItemProperty -path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoViewContextMenu' -Value 0 -ErrorAction Stop
                 Write-Log -Message "Successfully set NoRun value for [HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer]"
             }
             Catch {
@@ -133,6 +134,7 @@ Foreach ($Profile in $RealUserProfiles) {
             try {
                 Set-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoRun' -Value 0 -ErrorAction Stop
                 Set-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoPinningToTaskbar' -Value 0 -ErrorAction Stop
+                Set-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoViewContextMenu' -Value 0 -ErrorAction Stop
                 Write-Log "Successfully set NoRun value for [HKEY_USERS\$TempHive\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer]"
             }
             Catch {
