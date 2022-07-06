@@ -1,4 +1,33 @@
-#Version 6
+#Version 7
+
+#These are registry settings that will be updated in the HKCU profiles on all profiles on the computer.
+#If you need to add another, just copy one of the entire [PSCustomObject]@{....}
+$UserRegistrySettings = @(
+    [PSCustomObject]@{
+        RegPath = '\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+        RegValue = 'NoRun'
+        RegData = 0
+    },
+    [PSCustomObject]@{
+        RegPath = '\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+        RegValue = 'NoPinningToTaskbar'
+        RegData = 0
+    },
+    [PSCustomObject]@{
+        RegPath = '\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+        RegValue = 'NoViewContextMenu'
+        RegData = 0
+    },
+    [PSCustomObject]@{
+        RegPath = '\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+        RegValue = 'DisableTaskMgr'
+        RegData = 0
+    }
+)
+
+
+
+
 function Write-Log {
     [CmdletBinding()] 
     Param (
@@ -50,12 +79,38 @@ function Write-Log {
     $Time = Get-Date -Format "HH:mm:ss.ffffff"
     $Date = Get-Date -Format "MM-dd-yyyy"
  
-    if ($ErrorMessage -ne $null) { $Type = 3 }
-    if ($Component -eq $null) { $Component = " " }
-    if ($Type -eq $null) { $Type = 1 }
+    if ($null -ne $ErrorMessage) { $Type = 3 }
+    if ($null -eq $Component) { $Component = " " }
+    if ($null -eq $Type) { $Type = 1 }
  
     $LogMessage = "<![LOG[$Message $ErrorMessage" + "]LOG]!><time=`"$Time`" date=`"$Date`" component=`"$Component`" context=`"`" type=`"$Type`" thread=`"`" file=`"`">"
     $LogMessage | Out-File -Append -Encoding UTF8 -FilePath $LogFile
+}
+
+function Get-ProcessOutput
+{
+    Param (
+                [Parameter(Mandatory=$true)]
+                [string]$FileName,
+                [Parameter(Mandatory=$false)]
+                [string]$Arguments
+    )
+    
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo.UseShellExecute = $false
+    $process.StartInfo.RedirectStandardOutput = $true
+    $process.StartInfo.RedirectStandardError = $true
+    $process.StartInfo.FileName = $FileName
+    if($Arguments) { $process.StartInfo.Arguments = $Arguments }
+    $null = $process.Start()
+    
+    $StandardError = $process.StandardError.ReadToEnd()
+    $StandardOutput = $process.StandardOutput.ReadToEnd()
+    
+    [PSCustomObject]@{
+        StandardOutput = $StandardOutput
+        StandardError  = $StandardError
+    }
 }
 
 $PSDefaultParameterValues["Write-Log:LogFile"] = "C:\Windows\Logs\Software\Update-RunPolicy.log"
@@ -66,11 +121,11 @@ Write-Log -Message "******************Beginning Run Policy Update***************
 Write-Log -Message "Checking Temp Hive is Empty..."
 If (Test-Path -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\SOFTWARE"){
     Write-Log -Message "Temp hive [HKEY_USERS\$TempHive] was not empty. attempting to unload..."
-    REG.EXE UNLOAD HKU\$TempHive
-    If (!(Test-Path -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\Software")) {
+    $Output = Get-ProcessOutput -FileName 'REG.EXE' -Arguments "UNLOAD HKU\$TempHive"
+    if ([string]::IsNullOrEmpty($Output.StandardError)){
         Write-Log -Message "Successfully Unloaded user hive out of [HKEY_USERS\$TempHive]"
     } else {
-        Write-Log -Message "Failed to unload existing temp hive [HKEY_USERS\$TempHive]. Searching for new temp hive..." -Type 2
+        Write-Log -Message "Failed to unload existing temp hive [HKEY_USERS\$TempHive].  Error [$($Output.StandardError)]. Searching for new temp hive..." -Type 2
         for ($i = 1; $i -lt 10; $i++){
             $NewTemp = "{0}{1}" -f $TempHive,$i
             If (!(Test-Path -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$NewTemp\SOFTWARE")){
@@ -91,86 +146,108 @@ Foreach ($Profile in $RealUserProfiles) {
     Write-Log -Message "Updating run policy for user [$($Profile.PSChildName)]."
     If ($Profile.PSChildName -in ($LoadedHives.PSChildName)) {
         Write-Log "Profile matches that of one of the already loaded registry hive files.  No need to load a hive."
-        If (((Get-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -ErrorAction Ignore).NoRun -ne 0) -or ((Get-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -ErrorAction Ignore).NoPinningToTaskbar -ne 0 ) -or ((Set-ItemProperty -path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -ErrorAction Ignore).NoViewContextMenu -ne 0)) {
-            Write-Log -Message "NoRun Value not set as expected [HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer]"
-            If (!(Test-Path -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer")){
-                New-Item -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -ErrorAction Ignore
+        foreach ($UserSetting in $UserRegistrySettings) {
+            $RegPath = "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)$($UserSetting.RegPath)"
+            If (!(Test-Path -Path "$RegPath")){
+                New-Item -Path "$RegPath" -Force -ErrorAction Ignore
             }
-            try {
-                Set-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoRun' -Value 0 -ErrorAction Stop
-                Set-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoPinningToTaskbar' -Value 0 -ErrorAction Stop
-                Set-ItemProperty -path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoViewContextMenu' -Value 0 -ErrorAction Stop
-                Write-Log -Message "Successfully set NoRun value for [HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer]"
-            }
-            Catch {
-                Write-Log -Message "Failed to set NoRun value for [HKEY_USERS\$($Profile.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer]" -Type 3
-                Write-Log -Message "Exception: $($_.Exception.Message) Reason: $($_.CategoryInfo.Reason)" -Type 3
-            }
-        }
-        Else {
-            Write-Log -Message "NoRun and NoPinningToTaskbar Values Already set to [0]" -Type 1
-        }
-        Write-Log -Message "Checking for [HKEY_USERS\$($Profile.PSChildName)\SOFTWARE\Policies\Microsoft\Windows\Explorer]" -Type 1
-        if (Test-Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\SOFTWARE\Policies\Microsoft\Windows\Explorer") {
-            Try {
-                Remove-Item "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\SOFTWARE\Policies\Microsoft\Windows\Explorer" -Recurse -Force -ErrorAction Stop
-                Write-Log -Message "Successfully removed [Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\SOFTWARE\Policies\Microsoft\Windows\Explorer]" -Type 1
-            }
-            Catch {
-                Write-Log -Message "Failed to removed [Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\SOFTWARE\Policies\Microsoft\Windows\Explorer]" -Type 3
-                Write-Log -Message "Exception: $($_.Exception.Message) Reason: $($_.CategoryInfo.Reason)" -Type 3
-            }
-        } else {
-            Write-Log -Message "Registry key [HKEY_USERS\$($Profile.PSChildName)\SOFTWARE\Policies\Microsoft\Windows\Explorer] not found on system." -Type 1
-        }
-    }
-    else {
-        REG.EXE LOAD HKU\$TempHive "$($Profile.ProfileImagePath)\NTUSER.DAT"
-        If (Test-Path -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\Software\Microsoft\Windows\CurrentVersion\Policies") {
-            Write-Log "Loaded user hive for [$($Profile.PSChildName)] into [HKEY_USERS\$TempHive] successfully."
-            If (!(Test-Path -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer")){
-                New-Item -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -ErrorAction Ignore
-            }
-            try {
-                Set-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoRun' -Value 0 -ErrorAction Stop
-                Set-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoPinningToTaskbar' -Value 0 -ErrorAction Stop
-                Set-ItemProperty -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name 'NoViewContextMenu' -Value 0 -ErrorAction Stop
-                Write-Log "Successfully set NoRun value for [HKEY_USERS\$TempHive\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer]"
-            }
-            Catch {
-                Write-Log "failed to set NoRun value for [HKEY_USERS\$TempHive\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer]" -Type 3
-                Write-Log "Exception: $($_.Exception.Message) Reason: $($_.CategoryInfo.Reason)" -Type 3
-            }
-            Write-Log -Message "Checking for [HKEY_USERS\$TempHive\SOFTWARE\Policies\Microsoft\Windows\Explorer]" -Type 1
-            if (Test-Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\SOFTWARE\Policies\Microsoft\Windows\Explorer") {
-                Try {
-                    Remove-Item "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\SOFTWARE\Policies\Microsoft\Windows\Explorer" -Recurse -Force -ErrorAction Stop
-                    Write-Log -Message "Successfully removed [Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\SOFTWARE\Policies\Microsoft\Windows\Explorer]" -Type 1
+            If ((Get-ItemProperty -Path $RegPath -ErrorAction Ignore).$($UserSetting.RegValue) -ne $UserSetting.RegData) {
+                Write-Log -Message "[$($UserSetting.RegValue)] value not set as expected [$RegPath]"
+                Try{
+                    Set-ItemProperty -Path $RegPath -Name "$($UserSetting.RegValue)" -Value $($UserSetting.RegData) -ErrorAction Stop
+                    Write-Log -Message "Successfully set [$($UserSetting.RegValue)] value for [$RegPath]"
                 }
-                Catch {
-                    Write-Log -Message "Failed to removed [Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\SOFTWARE\Policies\Microsoft\Windows\Explorer]" -Type 3
+                Catch{
+                    Write-Log -Message "Failed to set [$($UserSetting.RegValue)] value for [$RegPath]" -Type 3
                     Write-Log -Message "Exception: $($_.Exception.Message) Reason: $($_.CategoryInfo.Reason)" -Type 3
                 }
             } else {
-                Write-Log -Message "Registry key [HKEY_USERS\$TempHive\SOFTWARE\Policies\Microsoft\Windows\Explorer] not found on system." -Type 1
+                Write-Log -Message "Already set [$($UserSetting.RegValue)] value for [$RegPath]"
             }
-    
+        }
+        $DeleteKey = "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($Profile.PSChildName)\SOFTWARE\Policies\Microsoft\Windows\Explorer"
+        Write-Log -Message "Checking for [$DeleteKey]" -Type 1
+        if (Test-Path "$DeleteKey") {
+            Try {
+                Remove-Item "$DeleteKey" -Recurse -Force -ErrorAction Stop
+                Write-Log -Message "Successfully removed [$DeleteKey]" -Type 1
+            }
+            Catch {
+                Write-Log -Message "Failed to removed [$DeleteKey]" -Type 3
+                Write-Log -Message "Exception: $($_.Exception.Message) Reason: $($_.CategoryInfo.Reason)" -Type 3
+            }
+        } else {
+            Write-Log -Message "Registry key [$DeleteKey] not found on system." -Type 1
+        }
+    }
+    else {
+        $Output = Get-ProcessOutput -FileName 'REG.EXE' -Arguments "LOAD HKU\$TempHive `"$($Profile.ProfileImagePath)\NTUSER.DAT`""
+        if ([string]::IsNullOrEmpty($Output.StandardError)){
+            Write-Log "Loaded user hive for [$($Profile.PSChildName)] into [HKEY_USERS\$TempHive] successfully."
+
+            foreach ($UserSetting in $UserRegistrySettings) {
+                $RegPath = "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive$($UserSetting.RegPath)"
+                If (!(Test-Path -Path "$RegPath")){
+                    New-Item -Path "$RegPath" -Force -ErrorAction Ignore
+                }
+                If ((Get-ItemProperty -Path $RegPath -ErrorAction Ignore).$($UserSetting.RegValue) -ne $UserSetting.RegData) {
+                    Write-Log -Message "[$($UserSetting.RegValue)] value not set as expected [$RegPath]"
+                    Try{
+                        Set-ItemProperty -Path $RegPath -Name "$($UserSetting.RegValue)" -Value $($UserSetting.RegData) -ErrorAction Stop
+                        Write-Log -Message "Successfully set [$($UserSetting.RegValue)] value for [$RegPath]"
+                    }
+                    Catch{
+                        Write-Log -Message "Failed to set [$($UserSetting.RegValue)] value for [$RegPath]" -Type 3
+                        Write-Log -Message "Exception: $($_.Exception.Message) Reason: $($_.CategoryInfo.Reason)" -Type 3
+                    }
+                } else {
+                    Write-Log -Message "Already set [$($UserSetting.RegValue)] value for [$RegPath]"
+                }
+            }
+            $DeleteKey = "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\SOFTWARE\Policies\Microsoft\Windows\Explorer"
+            Write-Log -Message "Checking for [$DeleteKey]" -Type 1
+            if (Test-Path "$DeleteKey") {
+                Try {
+                    Remove-Item "$DeleteKey" -Recurse -Force -ErrorAction Stop
+                    Write-Log -Message "Successfully removed [$DeleteKey]" -Type 1
+                }
+                Catch {
+                    Write-Log -Message "Failed to removed [$DeleteKey]" -Type 3
+                    Write-Log -Message "Exception: $($_.Exception.Message) Reason: $($_.CategoryInfo.Reason)" -Type 3
+                }
+            } else {
+                Write-Log -Message "Registry key [$DeleteKey] not found on system." -Type 1
+            }
         }
         else {
-            Write-Log "Failed to load Hive into temporary space." -Type 3
+            Write-Log "Failed to load Hive into temporary space. Error [$($Output.StandardError)]." -Type 3
         }
-        REG.EXE UNLOAD HKU\$TempHive
-        If (!(Test-Path -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\Software")) {
-            Write-Log "Successfully Unloaded user hive for [$($Profile.PSChildName)] out of [HKEY_USERS\$TempHive]"
-        }
-        else {
-            Write-Log "Failed to Unloaded user hive for [$($Profile.PSChildName)] out of [HKEY_USERS\$TempHive]" -Type 3
+        for ($i = 0; $i -lt 10; $i++) {
+            $Output = Get-ProcessOutput -FileName 'REG.EXE' -Arguments "UNLOAD HKU\$TempHive"
+            if ([string]::IsNullOrEmpty($Output.StandardError)){
+                Write-Log "Successfully Unloaded user hive for [$($Profile.PSChildName)] out of [HKEY_USERS\$TempHive]"
+                break
+            } else {
+                Write-Log "Failed to Unloaded user hive for [$($Profile.PSChildName)] out of [HKEY_USERS\$TempHive].  Will wait a second and try again." -Type 3
+                Start-Sleep -Seconds 1    
+            }
         }
     }
 }
+
+
 If (Test-Path -Path "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$TempHive\Software"){
     Write-Log "Looks like there was still a Temp Registry hive loaded. Attempting to unload it.  No status will be displayed" -Type 2
-    REG.EXE UNLOAD HKU\$TempHive
+    for ($i = 0; $i -lt 10; $i++) {
+        $Output = Get-ProcessOutput -FileName 'REG.EXE' -Arguments "UNLOAD HKU\$TempHive"
+        if ([string]::IsNullOrEmpty($Output.StandardError)){
+            Write-Log "Successfully Unloaded user hive for [$($Profile.PSChildName)] out of [HKEY_USERS\$TempHive]"
+            break
+        } else {
+            Write-Log "Failed to Unloaded user hive for [$($Profile.PSChildName)] out of [HKEY_USERS\$TempHive].  Will wait a second and try again." -Type 3
+            Start-Sleep -Seconds 1    
+        }
+    }
 }
 
 Write-Log "******************Completed Run Policy Update******************"
