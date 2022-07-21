@@ -13,5 +13,10 @@ Or, Add a Date to the file name you export:
 `Export-ADCMComparison -SiteServer CM01.domain.com -CMSite SS1 -CSVPath C:\Shared\Computers_$(get-date -Format yyyyMMdd).csv`
 
 Or, for AAD to CM comparison:
-
-`Export-AADCMComparison -SiteServer CM01.domain.com -CMSite SS1 -CSVPath C:\Shared\Computers.csv`
+First, you may have to install the Microsoft Graph Intune module first to get access to the needed cmdlts.
+`Install-Module -Name Microsoft.Graph.Intune`
+If it is already installed, then connect to Graph and then run the export.
+```
+Connect-MSGraph
+Export-AADCMComparison -SiteServer CM01.domain.com -CMSite SS1 -CSVPath C:\Shared\Computers.csv
+```
