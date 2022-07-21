@@ -14,7 +14,9 @@ Or, Add a Date to the file name you export:
 
 Or, for AAD to CM comparison:
 First, you may have to install the Microsoft Graph Intune module first to get access to the needed cmdlts.
+
 `Install-Module -Name Microsoft.Graph.Intune`
+
 If it is already installed, then connect to Graph and then run the export.
 ```
 Connect-MSGraph
