@@ -19,6 +19,12 @@ Function Get-ComputersFromAD {
 }
 
 Function Get-ComputersFromAAD {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('AzureNative','HybridJoined','BYOD')]
+        [string[]]$Type = 'AzureNative'
+    )
     try {
         $null = get-command Connect-MSGraph -ErrorAction Stop
     }
@@ -37,21 +43,41 @@ Function Get-ComputersFromAAD {
         }
     }
     Write-Verbose -Message "Now connected to graph api. querying for computers"
-    $URI = 'https://graph.microsoft.com/beta/devices'
+    $GraphResults = $null
+    $Devices = @()
+    $StartURI = 'https://graph.microsoft.com/beta/devices?$top=500'
     try {
-        Write-Verbose -Message "Querying graph api [$URI]"
-        $GraphResults = Invoke-MSGraphRequest -HttpMethod GET -Url $uri -ErrorAction Stop
-        [array]$Devices = $GraphResults.value
+        do {
+            If ([string]::IsNullOrEmpty($GraphResults.'@odata.nextLink')){
+                $URI = $StartURI
+            } else {
+                $URI = $GraphResults.'@odata.nextLink'
+            }
+            Write-Verbose -Message "Querying graph api [$URI]"
+            $GraphResults = Invoke-MSGraphRequest -HttpMethod GET -Url $uri -ErrorAction Stop
+            $Devices += $GraphResults.value                
+        } while (
+            -not [string]::IsNullOrEmpty($GraphResults.'@odata.nextLink')
+        )
     }
     catch {
         Throw "Failed to query Graph for computers.  Error: $($_.exception.message)"
     }
     foreach ($Device in $Devices) {
+        Switch($Device.trustType){
+            'Workplace' {$JoinType = 'BYOD'} #(indicates bring your own personal devices)
+            'AzureAd' {$JoinType = 'AzureNative'} #(Cloud only joined devices)
+            'ServerAd' {$JoinType = 'HybridJoined'} #(on-premises domain joined devices joined to Azure AD)
+        }
+        If ($JoinType -notin $Type) {
+            continue
+        }
         [PSCustomObject]@{
             'ComputerName'    = "$($Device.displayName)";
             'OperatingSystem' = "$($Device.operatingSystem)";
             'LastLogon'       = "$($Device.approximateLastSignInDateTime)";
             'PasswordLastSet' = "$($Device.approximateLastSignInDateTime)";
+            'JoinType'        = "$JoinType"
             'DeviceId'        = "$($Device.deviceId)";
             'OrgUnit'         = 'AAD'
         }
@@ -141,6 +167,7 @@ function Get-AADWithCMComputers {
             'PasswordLastSet'   = "$($Comp.PasswordLastSet)"
             'DeviceId'          = "$($Comp.DeviceId)"
             'OrgUnit'           = "$($Comp.OrgUnit)"
+            'JoinType'          = "$($Comp.JoinType)"
             'InConfigMgr'       = "$InCM"
             'CMClient'          = "$CMClient"
             'LastPolicyRequest' = "$CMPolicyRequest"
@@ -175,6 +202,7 @@ Function Get-ADCMComparison {
 }
 
 Function Get-AADCMComparison {
+    [CmdletBinding()]
     param(
         # Primary site server for this Configuration Manager Site
         [Parameter(Mandatory = $true)]
@@ -187,17 +215,20 @@ Function Get-AADCMComparison {
         [string]
         $CMSite = (Get-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\CCM\CcmEval -Name LastSiteCode -ErrorAction SilentlyContinue).LastSiteCode,
         [Parameter(Mandatory = $false)]
+        [ValidateSet('AzureNative','HybridJoined','BYOD')]
+        [string[]]$Type = 'AzureNative',
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [System.Management.Automation.PSCredential]$Credential
     )
-    $aadc = Get-ComputersFromAAD
+    $aadc = Get-ComputersFromAAD -Type $Type
     if ($Credential) {
         $cmc = Get-ComputersFromCM -SiteServer $SiteServer -CMSite $CMSite -Credential $Credential
     }
     else {
         $cmc = Get-ComputersFromCM -SiteServer $SiteServer -CMSite $CMSite
     }
-    Get-AADWithCMComputers -AdComputers $aadc -CmComputers $cmc
+    Get-AADWithCMComputers -AadComputers $aadc -CmComputers $cmc
 }
 
 Function Export-ADCMComparison {
@@ -250,6 +281,9 @@ Function Export-AADCMComparison {
         [string]
         $CMSite = (Get-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\CCM\CcmEval -Name LastSiteCode -ErrorAction SilentlyContinue).LastSiteCode,
         [Parameter(Mandatory = $false)]
+        [ValidateSet('AzureNative','HybridJoined','BYOD')]
+        [string[]]$Type = 'AzureNative',
+        [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [System.Management.Automation.PSCredential]$Credential,
         # File you want to export your CSV of computers to
@@ -264,12 +298,12 @@ Function Export-AADCMComparison {
         $CSVPath = ".\CMADComputerComparison$(Get-Date -Format 'yyyyMMdd-hhmmss').csv"
     )
     Write-Host "Exporting computer list to: $CSVPath"
-    $aadc = Get-ComputersFromAD
+    $aadc = Get-ComputersFromAAD -Type $Type
     if ($Credential) {
         $cmc = Get-ComputersFromCM -SiteServer $SiteServer -CMSite $CMSite -Credential $Credential
     }
     else {
         $cmc = Get-ComputersFromCM -SiteServer $SiteServer -CMSite $CMSite
     }
-    Get-ADWithCMComputers -AdComputers $aadc -CmComputers $cmc | Export-Csv -Path $CSVPath -NoTypeInformation
+    Get-AADWithCMComputers -AadComputers $aadc -CmComputers $cmc | Export-Csv -Path $CSVPath -NoTypeInformation
 }
