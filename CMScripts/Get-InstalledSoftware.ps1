@@ -42,7 +42,7 @@ Function Get-InstalledSoftware {
         If ($Architecture.Contains('x86')){
             $UninstallKeys.Add('Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*')
         }
-        If ($Architecture.Contains('x86')){
+        If ($Architecture.Contains('x64')){
             $UninstallKeys.Add('Software\Microsoft\Windows\CurrentVersion\Uninstall\*')
         }
     }
