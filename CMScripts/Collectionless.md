@@ -19,13 +19,13 @@
 
 
 ```powershell
-$AppName = "Test App 1"
+$AppName = "Test App 4"
 
-$Deployment = New-CMApplicationDeployment -CollectionName "Windows Workstation" -Name "$AppName" -DeployAction Install -DeployPurpose Available -ApprovalRequired $true
+#$Deployment = New-CMApplicationDeployment -CollectionName "Windows Workstation" -Name "$AppName" -DeployAction Install -DeployPurpose Available -ApprovalRequired $true
 
 $application = Get-CMApplication -Name "$AppName"
 
-$machine = Get-WmiObject -Namespace 'root\sms\site_XXL' -Query "SELECT * FROM SMS_R_SYSTEM WHERE Name = 'Win10-1'"
+$machine = Get-WmiObject -Namespace 'root\sms\site_XXL' -Query "SELECT * FROM SMS_R_SYSTEM WHERE Name = 'Win10-2'"
 
 $machinename = $machine.Name
 
